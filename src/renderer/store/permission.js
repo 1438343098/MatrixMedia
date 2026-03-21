@@ -7,6 +7,10 @@ import VueRouter from "vue-router";
 
 // 引入路由表
 import { constantRouterMap } from "@/router";
+import {
+  setAccountLoginFlag,
+  clearAccountLoginFlag,
+} from "@/utils/accountLoginFlag";
 
 function addFetchRoute(routes) {
   return new Promise(resolve => {
@@ -71,9 +75,20 @@ function addFetchRoute(routes) {
               }
             });
             taskHandlers.set(taskId, data => {
+              const flagName = data.flagName || `${i.phone.split("-")[0]}${i.pt}登录`;
               if (data.success) {
-                document.cookie = data.result;
+                if (data.result) {
+                  setAccountLoginFlag(flagName, data.loginExpiresAtMs);
+                  try {
+                    document.cookie = data.result;
+                  } catch (e) {
+                    /* file:// 下 document.cookie 常不可用 */
+                  }
+                } else {
+                  clearAccountLoginFlag(flagName);
+                }
               } else {
+                clearAccountLoginFlag(flagName);
                 console.error(`[${i.phone}${i.pt}] 登录状态失败:`, data.error);
               }
             });

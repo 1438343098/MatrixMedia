@@ -98,6 +98,11 @@ import { ipcRenderer } from "electron";
 import moment from "moment";
 import dataRequest from "@/utils/dataRequest";
 import ptConfig from "@/utils/configUrl";
+import {
+  setAccountLoginFlag,
+  clearAccountLoginFlag,
+  isAccountLoginFlagSet,
+} from "@/utils/accountLoginFlag";
 
 function fileBaseName(p) {
   if (!p) return "";
@@ -241,15 +246,13 @@ export default {
             url: child.meta.url,
             loggedIn: (() => {
               const name = `${child.meta.phone.split("-")[0]}${child.meta.pt}登录`;
+              if (isAccountLoginFlagSet(name)) return true;
               const cookies = document.cookie.split(";");
-              let bool = false;
               for (const c of cookies) {
                 const [key, value] = c.trim().split("=");
-                if (key == name && value == "true") {
-                  bool = true;
-                }
+                if (key == name && value == "true") return true;
               }
-              return bool;
+              return false;
             })(),
           })),
         };
@@ -274,9 +277,20 @@ export default {
         name: `${i.phone.split("-")[0]}${i.pt}登录`,
       });
       this.taskHandlers.set(taskId, data => {
+        const flagName = data.flagName || `${i.phone.split("-")[0]}${i.pt}登录`;
         if (data.success) {
-          document.cookie = data.result;
+          if (data.result) {
+            setAccountLoginFlag(flagName, data.loginExpiresAtMs);
+            try {
+              document.cookie = data.result;
+            } catch (e) {
+              /* file:// 打包页面对 document.cookie 限制严格，已用 localStorage */
+            }
+          } else {
+            clearAccountLoginFlag(flagName);
+          }
         } else {
+          clearAccountLoginFlag(flagName);
           console.error(`[${i.phone.split("-")[0]}${i.pt}] 登录状态失败:`, data.error);
         }
       });
