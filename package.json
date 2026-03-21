@@ -13,7 +13,8 @@
     "build:all": "rm -rf build && yarn build:dir && electron-builder --win --x64 --mac --x64 --arm64",
     "pack:resources": "npm run build && node .electron-vue/hot-updater.js",
     "dep:upgrade": "yarn upgrade-interactive --latest",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "pushall": "node pushall.js"
   },
   "build": {
     "forceCodeSigning": false,

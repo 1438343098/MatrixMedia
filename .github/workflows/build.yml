@@ -5,68 +5,11 @@ on:
     branches:
       - prod
 
-concurrency:
-  group: release-prod
-  cancel-in-progress: false
-
-permissions:
-  contents: write
-
 jobs:
-  # 合并到 prod 后：在 main 上 patch 版本号 → 推送 main → 合并回 prod（带 [skip-version-bump] 避免再次升版）
-  # 若 main 与 prod 合并不了，请先在本地解决冲突后再推 prod
-  version-bump:
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, '[skip-version-bump]') }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.15.1'
-      - name: Bump patch on main and merge to prod
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main prod
-          git checkout main
-          git pull --ff-only origin main
-          npm version patch --no-git-tag-version
-          VER=$(node -p "require('./package.json').version")
-          git add package.json
-          git commit -m "chore(release): v${VER}"
-          git push origin main
-          git checkout prod
-          git pull --ff-only origin prod
-          git merge origin/main -m "chore: merge main for release v${VER} [skip-version-bump]"
-          git push origin prod
-
-  resolve-prod-ref:
-    needs: version-bump
-    if: ${{ always() && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped') }}
-    runs-on: ubuntu-latest
-    outputs:
-      sha: ${{ steps.pick.outputs.sha }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Resolve prod commit for builds
-        id: pick
-        run: |
-          git fetch origin prod
-          echo "sha=$(git rev-parse origin/prod)" >> $GITHUB_OUTPUT
-
   build-windows:
-    needs: resolve-prod-ref
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.resolve-prod-ref.outputs.sha }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -99,13 +42,9 @@ jobs:
           path: build/Setup-*-win-x64.exe
 
   build-mac:
-    needs: resolve-prod-ref
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.resolve-prod-ref.outputs.sha }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -123,15 +62,12 @@ jobs:
           path: build/*.dmg
 
   release-github:
-    needs: [build-windows, build-mac, resolve-prod-ref]
+    needs: [build-windows, build-mac]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.resolve-prod-ref.outputs.sha }}
       - name: Read version from package.json
         id: ver
         shell: bash
@@ -156,13 +92,10 @@ jobs:
 
   release-gitee:
     # 同步 Windows 安装包与 macOS DMG（注意 Gitee 单文件约 100MB 上限）
-    needs: [build-windows, build-mac, resolve-prod-ref]
+    needs: [build-windows, build-mac]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.resolve-prod-ref.outputs.sha }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
