@@ -17,7 +17,13 @@
   },
   "build": {
     "forceCodeSigning": false,
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "electronLanguages": [
+      "zh-CN"
+    ],
     "extraFiles": [],
     "publish": [
       {
@@ -54,23 +60,21 @@
       "icon": "lib/icons/icon.png",
       "target": "dmg",
       "identity": null
+    },
+    "dmg": {
+      "format": "ULFO"
     }
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "cheerio": "1.0.0-rc.12",
     "electron-updater": "^5.3.0",
     "express": "4.19.2",
     "fs-extra": "^11.1.0",
-    "iconv-lite": "^0.6.3",
     "moment": "^2.30.1",
-    "openai": "^5.12.2",
     "puppeteer-core": "^19.0.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "puppeteer-in-electron": "^3.0.5",
-    "xlsx": "^0.18.5",
-    "zlib": "^1.0.5"
+    "puppeteer-in-electron": "^3.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",
