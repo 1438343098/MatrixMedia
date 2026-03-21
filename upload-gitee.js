@@ -31,13 +31,13 @@ deleteOldestRelease();
 // 发布
 createRelease();
 
-/** 额外文件路径：node upload-gitee.js <token> <version> [file ...]（仅上传 .exe，跳过 mac .dmg 等以符合 Gitee 单文件大小限制） */
+/** 额外文件路径：node upload-gitee.js <token> <version> [file ...]（仅上传 .exe / .dmg） */
 function resolveUploadPaths() {
   const extra = args.slice(2).filter(a => a && a !== '--');
   if (extra.length > 0) {
     return extra
       .map(f => path.resolve(f))
-      .filter(fp => /\.exe$/i.test(fp));
+      .filter(fp => /\.(exe|dmg)$/i.test(fp));
   }
   const buildDir = path.join(__dirname, 'build');
   const raw = path.join(buildDir, package.build.productName + ' Setup ' + name + '.exe');
