@@ -90,9 +90,15 @@ function syncGiteeMain() {
   ensureGiteeRemote();
   try {
     run(`git push ${GITEE_REMOTE} main`);
+    return true;
   } catch {
-    console.warn('推送到 Gitee 失败，正在强制同步 main...');
-    run(`git push -f ${GITEE_REMOTE} main`);
+    console.warn('推送到 Gitee 失败，正在强制同步 main（仅对非快进冲突有效，认证失败无效）...');
+    try {
+      run(`git push -f ${GITEE_REMOTE} main`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -118,7 +124,17 @@ function main() {
   run(`git commit -m "chore(release): v${next}"`);
   run('git push origin main');
 
-  syncGiteeMain();
+  const giteeOk = syncGiteeMain();
+  if (!giteeOk) {
+    console.warn(
+      [
+        'Gitee 同步失败（常见原因：未在 Gitee 添加本机 SSH 公钥，或多密钥时未为 gitee.com 指定 IdentityFile）。',
+        '排查：ssh -T git@gitee.com',
+        '配置示例（~/.ssh/config）：Host gitee.com / User git / IdentityFile ~/.ssh/id_ed25519 / IdentitiesOnly yes',
+        '将跳过 Gitee，继续推送 origin prod。',
+      ].join('\n'),
+    );
+  }
 
   checkoutBranch('prod');
   run('git pull --ff-only origin prod');
@@ -126,7 +142,8 @@ function main() {
   run('git push origin prod');
 
   run('git checkout main');
-  console.log('完成。当前分支: main，已推送 origin main、Gitee main 与 prod。');
+  const giteeMsg = giteeOk ? '、Gitee main' : '（Gitee 未成功）';
+  console.log(`完成。当前分支: main，已推送 origin main${giteeMsg} 与 prod。`);
 }
 
 main();
