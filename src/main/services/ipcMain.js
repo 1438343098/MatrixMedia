@@ -1,4 +1,5 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app, shell } from 'electron'
+import { spawn } from 'child_process'
 import Server from '../server/index'
 
 import { winURL } from '../config/StaticPath'
@@ -32,6 +33,7 @@ function getAllReleases() {
 
       res.on('end', () => {
         if (data.indexOf('{') != -1) {
+          console.log(JSON.parse(data), 'JSON.parse(data)')
           resolve(JSON.parse(data))
         } else {
           resolve([])
@@ -115,10 +117,14 @@ export default {
       const remoteVer =
         (lastData.tag_name && String(lastData.tag_name).replace(/^v/i, '')) ||
         (lastData.name && String(lastData.name).replace(/^v/i, ''))
+      console.log(lastData, remoteVer, 'remoteVer', version)
       const cmp = compareSemver(remoteVer, version)
       const assets = lastData.assets || []
+
       const installer = pickReleaseInstaller(assets)
       const downloadURL = installer && installer.browser_download_url
+      console.log(downloadURL, 'downloadURL', assets)
+      console.log(cmp, 'cmp')
       if (downloadURL && cmp > 0) {
         downloadFile.download(
           BrowserWindow.fromWebContents(event.sender),
@@ -127,6 +133,21 @@ export default {
       }
       return false
     })
+
+    // Windows：先启动安装包再退出应用，避免 NSIS 无法结束正在运行的 矩媒.exe
+    ipcMain.handle('launch-installer', async (event, installerPath) => {
+      if (!installerPath || typeof installerPath !== 'string') {
+        return { ok: false }
+      }
+      if (process.platform === 'win32') {
+        spawn(installerPath, [], { detached: true, stdio: 'ignore' }).unref()
+        app.quit()
+      } else {
+        await shell.openPath(installerPath)
+      }
+      return { ok: true }
+    })
+
     // puppeteerFile 上传文件发布，获取登录状态
     puppeteerFile()
 

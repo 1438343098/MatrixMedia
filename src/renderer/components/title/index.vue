@@ -42,7 +42,7 @@
 </template>
 
 <script>
-import { ipcRenderer,shell } from "electron";
+import { ipcRenderer } from "electron";
 export default {
   data: () => ({
     mix: false,
@@ -134,7 +134,7 @@ export default {
       this.$alert("更新下载完成！", "提示", {
         confirmButtonText: "安装",
         callback: () => {
-          shell.openPath(this.filePath);
+          ipcRenderer.invoke("launch-installer", this.filePath);
         },
       });
     },
