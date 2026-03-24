@@ -224,7 +224,7 @@ function getAllReleases(callback) {
 // 删除最旧的 Release
 function deleteOldestRelease() {
   getAllReleases(releases => {
-    console.log(releases, releases.assets)
+    console.log(releases, releases[releases.length - 1].assets)
     if (releases.length >= 5) {
       // 找到最旧的 Release
       const oldestRelease = releases[0]
