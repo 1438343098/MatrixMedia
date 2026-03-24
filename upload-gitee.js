@@ -89,7 +89,13 @@ function uploadSingleFile(releaseId, filePath) {
   })
 }
 
-async function uploadAllFiles(releaseId) {
+function collectExistingAssetNames(assets) {
+  if (!Array.isArray(assets)) return []
+  return assets.map(a => a && a.name).filter(Boolean)
+}
+
+async function uploadAllFiles(releaseId, existingAssets) {
+  const existingNames = new Set(collectExistingAssetNames(existingAssets))
   let paths
   try {
     paths = resolveUploadPaths()
@@ -100,6 +106,11 @@ async function uploadAllFiles(releaseId) {
   for (const fp of paths) {
     if (!fs.existsSync(fp)) {
       console.error('文件不存在，跳过:', fp)
+      continue
+    }
+    const fileName = path.basename(fp)
+    if (existingNames.has(fileName)) {
+      console.log('已存在同名附件，跳过上传:', fileName)
       continue
     }
     console.log('开始上传', fp)
@@ -128,8 +139,9 @@ function createRelease() {
     // 在数据流结束时处理数据
     res.on('end', () => {
       if (res.statusCode === 201) {
-        console.log('创建仓库成功', JSON.parse(data).id)
-        uploadAllFiles(JSON.parse(data).id).catch(err => {
+        const rel = JSON.parse(data)
+        console.log('创建仓库成功', rel.id)
+        uploadAllFiles(rel.id, rel.assets).catch(err => {
           console.error('上传附件失败:', err.message || err)
           process.exitCode = 1
         })
@@ -139,7 +151,7 @@ function createRelease() {
           // 通过tag_name 获取release_id
           tgaGetRelease(releaseData => {
             console.log('获取release_id', releaseData.id)
-            uploadAllFiles(releaseData.id).catch(err => {
+            uploadAllFiles(releaseData.id, releaseData.assets).catch(err => {
               console.error('上传附件失败:', err.message || err)
               process.exitCode = 1
             })
