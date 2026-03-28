@@ -86,21 +86,19 @@ function pickReleaseInstaller(assets) {
       list.find(a => /\.exe$/i.test(a.name))
     )
   }
-  if (platform === 'darwin') {
-    const dmgs = list.filter(a => /\.dmg$/i.test(a.name))
-    const isAppleSilicon = process.arch === 'arm64'
+  if (platform === "darwin") {
+    const dmgs = list.filter(a => /\.dmg$/i.test(a.name));
+    const isAppleSilicon = process.arch === "arm64";
+    const armDmg = dmgs.find(a => /-arm64\.dmg$/i.test(a.name));
+    const x64Dmg = dmgs.find(a => /-x64\.dmg$/i.test(a.name));
+    const universalDmg = dmgs.find(a => /-universal\.dmg$/i.test(a.name));
+    const plainDmg = dmgs.find(a => !/-arm64\.dmg$/i.test(a.name) && !/-x64\.dmg$/i.test(a.name) && !/-universal\.dmg$/i.test(a.name));
+
     if (isAppleSilicon) {
-      const arm = dmgs.find(a => /-arm64\.dmg$/i.test(a.name))
-      if (arm) {
-        return arm
-      }
+      return armDmg || universalDmg || plainDmg || null;
     } else {
-      const intelDmg = dmgs.find(a => !/-arm64\.dmg$/i.test(a.name))
-      if (intelDmg) {
-        return intelDmg
-      }
+      return x64Dmg || universalDmg || plainDmg || null;
     }
-    return dmgs.length > 0 ? dmgs[0] : null
   }
   return null
 }
