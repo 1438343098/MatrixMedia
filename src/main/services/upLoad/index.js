@@ -4,3 +4,4 @@ export { default as blbl } from "./blbl.js";
 export { default as sph } from "./sph.js";
 export { default as tt } from "./tt.js";
 export { default as ks } from "./ks.js";
+export { default as xhs } from "./xhs.js";

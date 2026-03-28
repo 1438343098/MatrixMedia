@@ -4,6 +4,7 @@ import  blbl from "./blbl.js";
 import  sph from "./sph.js";
 import  tt from "./tt.js";
 import  ks from "./ks.js";
+import  xhs from "./xhs.js";
 
 // 添加默认导出
 export default {
@@ -12,5 +13,6 @@ export default {
   blbl,
   sph,
   tt,
-  ks
+  ks,
+  xhs
 };
