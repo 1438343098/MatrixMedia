@@ -56,6 +56,11 @@ function bumpSemver(current, type) {
     patch = 0;
   } else {
     patch += 1;
+    // 小版本按 0-9 循环，达到 10 次自动进位到中版本
+    if (patch >= 10) {
+      minor += 1;
+      patch = 0;
+    }
   }
   return `${major}.${minor}.${patch}`;
 }

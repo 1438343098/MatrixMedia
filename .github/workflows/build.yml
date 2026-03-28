@@ -68,6 +68,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Read version from package.json
         id: ver
         shell: bash
@@ -75,11 +78,43 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Generate release notes
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         shell: bash
         run: |
-          PREV_TAG=$(git tag --sort=-version:refname | head -n 1)
-          if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)")
+          CURRENT_TAG="v${VERSION}"
+          MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
+          MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
+          PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
+
+          TITLE="## 更新记录"
+          RANGE_LABEL="全部历史..HEAD"
+          RANGE_START=""
+
+          # minor/major 发布（patch=0）时，优先按“上一个 minor 起点标签”统计
+          if [ "$PATCH" = "0" ] && [ -n "$MINOR" ] && [ "$MINOR" -gt 0 ] 2>/dev/null; then
+            PREV_MINOR=$((MINOR - 1))
+            CANDIDATE="v${MAJOR}.${PREV_MINOR}.0"
+            if git rev-parse -q --verify "refs/tags/${CANDIDATE}" >/dev/null; then
+              RANGE_START="$CANDIDATE"
+              TITLE="## 大版本更新日志"
+            fi
+          fi
+
+          # 回退：按最近一个非当前标签统计
+          if [ -z "$RANGE_START" ]; then
+            mapfile -t TAGS < <(git tag --sort=-version:refname 'v*')
+            for TAG in "${TAGS[@]}"; do
+              if [ "$TAG" != "$CURRENT_TAG" ]; then
+                RANGE_START="$TAG"
+                break
+              fi
+            done
+          fi
+
+          if [ -n "$RANGE_START" ]; then
+            RANGE_LABEL="${RANGE_START}..HEAD"
+            COMMITS=$(git log "${RANGE_START}..HEAD" --pretty=format:"- %s (%h)")
           else
             COMMITS=$(git log --pretty=format:"- %s (%h)")
           fi
@@ -87,12 +122,10 @@ jobs:
             COMMITS="- 无更新记录"
           fi
           {
-            echo "## 更新记录"
+            echo "$TITLE"
             echo
-            if [ -n "$PREV_TAG" ]; then
-              echo "对比范围: ${PREV_TAG}..HEAD"
-              echo
-            fi
+            echo "对比范围: ${RANGE_LABEL}"
+            echo
             echo "$COMMITS"
           } > release-notes.md
       - name: Download build artifacts
@@ -118,10 +151,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.15.1'
+      - name: Read version from package.json
+        id: ver
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -130,11 +172,43 @@ jobs:
       - name: Install dependencies
         run: yarn
       - name: Generate release notes
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         shell: bash
         run: |
-          PREV_TAG=$(git tag --sort=-version:refname | head -n 1)
-          if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)")
+          CURRENT_TAG="v${VERSION}"
+          MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
+          MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
+          PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
+
+          TITLE="## 更新记录"
+          RANGE_LABEL="全部历史..HEAD"
+          RANGE_START=""
+
+          # minor/major 发布（patch=0）时，优先按“上一个 minor 起点标签”统计
+          if [ "$PATCH" = "0" ] && [ -n "$MINOR" ] && [ "$MINOR" -gt 0 ] 2>/dev/null; then
+            PREV_MINOR=$((MINOR - 1))
+            CANDIDATE="v${MAJOR}.${PREV_MINOR}.0"
+            if git rev-parse -q --verify "refs/tags/${CANDIDATE}" >/dev/null; then
+              RANGE_START="$CANDIDATE"
+              TITLE="## 大版本更新日志"
+            fi
+          fi
+
+          # 回退：按最近一个非当前标签统计
+          if [ -z "$RANGE_START" ]; then
+            mapfile -t TAGS < <(git tag --sort=-version:refname 'v*')
+            for TAG in "${TAGS[@]}"; do
+              if [ "$TAG" != "$CURRENT_TAG" ]; then
+                RANGE_START="$TAG"
+                break
+              fi
+            done
+          fi
+
+          if [ -n "$RANGE_START" ]; then
+            RANGE_LABEL="${RANGE_START}..HEAD"
+            COMMITS=$(git log "${RANGE_START}..HEAD" --pretty=format:"- %s (%h)")
           else
             COMMITS=$(git log --pretty=format:"- %s (%h)")
           fi
@@ -142,12 +216,10 @@ jobs:
             COMMITS="- 无更新记录"
           fi
           {
-            echo "## 更新记录"
+            echo "$TITLE"
             echo
-            if [ -n "$PREV_TAG" ]; then
-              echo "对比范围: ${PREV_TAG}..HEAD"
-              echo
-            fi
+            echo "对比范围: ${RANGE_LABEL}"
+            echo
             echo "$COMMITS"
           } > release-notes.md
       - name: Upload to Gitee Release
