@@ -83,46 +83,27 @@ jobs:
         shell: bash
         run: |
           CURRENT_TAG="v${VERSION}"
-          MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
-          MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
-          PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
-
-          TITLE="## 更新记录"
-          RANGE_LABEL="全部历史..HEAD"
           RANGE_START=""
-
-          # minor/major 发布（patch=0）时，优先按“上一个 minor 起点标签”统计
-          if [ "$PATCH" = "0" ] && [ -n "$MINOR" ] && [ "$MINOR" -gt 0 ] 2>/dev/null; then
-            PREV_MINOR=$((MINOR - 1))
-            CANDIDATE="v${MAJOR}.${PREV_MINOR}.0"
-            if git rev-parse -q --verify "refs/tags/${CANDIDATE}" >/dev/null; then
-              RANGE_START="$CANDIDATE"
-              TITLE="## 大版本更新日志"
+          mapfile -t TAGS < <(git tag --sort=-version:refname 'v*')
+          for TAG in "${TAGS[@]}"; do
+            if [ "$TAG" != "$CURRENT_TAG" ]; then
+              RANGE_START="$TAG"
+              break
             fi
-          fi
-
-          # 回退：按最近一个非当前标签统计
-          if [ -z "$RANGE_START" ]; then
-            mapfile -t TAGS < <(git tag --sort=-version:refname 'v*')
-            for TAG in "${TAGS[@]}"; do
-              if [ "$TAG" != "$CURRENT_TAG" ]; then
-                RANGE_START="$TAG"
-                break
-              fi
-            done
-          fi
+          done
 
           if [ -n "$RANGE_START" ]; then
             RANGE_LABEL="${RANGE_START}..HEAD"
             COMMITS=$(git log "${RANGE_START}..HEAD" --pretty=format:"- %s (%h)" --grep='^chore(release): v' --invert-grep)
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --grep='^chore(release): v' --invert-grep)
+            RANGE_LABEL="无可对比标签"
+            COMMITS="- 无更新记录"
           fi
           if [ -z "$COMMITS" ]; then
             COMMITS="- 无更新记录"
           fi
           {
-            echo "$TITLE"
+            echo "## 更新记录"
             echo
             echo "对比范围: ${RANGE_LABEL}"
             echo
@@ -177,46 +158,27 @@ jobs:
         shell: bash
         run: |
           CURRENT_TAG="v${VERSION}"
-          MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
-          MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
-          PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
-
-          TITLE="## 更新记录"
-          RANGE_LABEL="全部历史..HEAD"
           RANGE_START=""
-
-          # minor/major 发布（patch=0）时，优先按“上一个 minor 起点标签”统计
-          if [ "$PATCH" = "0" ] && [ -n "$MINOR" ] && [ "$MINOR" -gt 0 ] 2>/dev/null; then
-            PREV_MINOR=$((MINOR - 1))
-            CANDIDATE="v${MAJOR}.${PREV_MINOR}.0"
-            if git rev-parse -q --verify "refs/tags/${CANDIDATE}" >/dev/null; then
-              RANGE_START="$CANDIDATE"
-              TITLE="## 大版本更新日志"
+          mapfile -t TAGS < <(git tag --sort=-version:refname 'v*')
+          for TAG in "${TAGS[@]}"; do
+            if [ "$TAG" != "$CURRENT_TAG" ]; then
+              RANGE_START="$TAG"
+              break
             fi
-          fi
-
-          # 回退：按最近一个非当前标签统计
-          if [ -z "$RANGE_START" ]; then
-            mapfile -t TAGS < <(git tag --sort=-version:refname 'v*')
-            for TAG in "${TAGS[@]}"; do
-              if [ "$TAG" != "$CURRENT_TAG" ]; then
-                RANGE_START="$TAG"
-                break
-              fi
-            done
-          fi
+          done
 
           if [ -n "$RANGE_START" ]; then
             RANGE_LABEL="${RANGE_START}..HEAD"
             COMMITS=$(git log "${RANGE_START}..HEAD" --pretty=format:"- %s (%h)" --grep='^chore(release): v' --invert-grep)
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --grep='^chore(release): v' --invert-grep)
+            RANGE_LABEL="无可对比标签"
+            COMMITS="- 无更新记录"
           fi
           if [ -z "$COMMITS" ]; then
             COMMITS="- 无更新记录"
           fi
           {
-            echo "$TITLE"
+            echo "## 更新记录"
             echo
             echo "对比范围: ${RANGE_LABEL}"
             echo
