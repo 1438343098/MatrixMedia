@@ -179,6 +179,30 @@ export default {
           this.$message.warning("未选择视频文件，已取消重发。");
           return;
         }
+      } else {
+        let shouldChooseNewVideo = false;
+        try {
+          await this.$confirm("是否重新选择视频文件后再重发？", "重新发布", {
+            confirmButtonText: "重新选择视频",
+            cancelButtonText: "沿用原视频",
+            distinguishCancelAndClose: true,
+            type: "warning",
+          });
+          shouldChooseNewVideo = true;
+        } catch (action) {
+          if (action === "close") {
+            this.$message.info("已取消重发。");
+            return;
+          }
+        }
+        if (shouldChooseNewVideo) {
+          const selectedPath = await ipcRenderer.invoke("dialog:openVideoFile");
+          if (!selectedPath) {
+            this.$message.warning("未选择视频文件，已取消重发。");
+            return;
+          }
+          filePath = selectedPath;
+        }
       }
 
       const sample = details[0] || {};
