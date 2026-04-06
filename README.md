@@ -1,6 +1,23 @@
+# 矩媒 MatrixMedia
 
+自媒体矩阵发布工具（Electron）。支持图形界面与**命令行（CLI）**自动化；CLI 已支持**抖音**扫码登录与**抖音**等平台视频发布，便于脚本与智能体编排。
 
-### 目前可以一键发布视频的平台有
+<!-- openclaw-integrable: id=matrixmedia-cli version=1 platform=electron argv-marker=cli -->
+<!-- 说明：OpenClaw 或其它自动化工具可通过 argv 含 `cli` 识别为 CLI 模式；子命令 `login`（抖音）与 `publish`（含抖音等）详见下文。 -->
+
+## OpenClaw 联动
+
+本项目声明 **可与 [OpenClaw](https://github.com/openclaw/openclaw) 等工具联动**：通过启动应用并传入 `cli` 参数进入无图形主界面流程，由标准输入输出与退出码交互。
+
+| 标识 | 含义 |
+|------|------|
+| `openclaw-integrable` | 仓库级声明，供发现与文档检索 |
+| `id=matrixmedia-cli` | 建议的工具/技能命名空间 |
+| `argv-marker=cli` | 进程参数中需包含子串 `cli`（如 `矩媒.exe cli publish ...`） |
+
+典型用法：在 OpenClaw 侧将本应用配置为**外部命令**（`command` + `args`），调用 `cli login` 完成抖音分区登录、`cli publish` 上传视频；终端二维码与无头模式等行为见各子命令 `--help`。
+
+## 目前可以一键发布视频的平台有
 
 1. 抖音
 2. 快手
@@ -9,6 +26,20 @@
 5. 头条号
 6. 视频号
 7. 小红书 未测试
+
+## 命令行（CLI）
+
+从项目根或已安装应用启动时，在参数中加入 **`cli`** 即进入 CLI（不打开主窗口）。**抖音**相关能力示例：
+
+```bash
+# 抖音登录（终端二维码等，详见帮助）
+ELECTRON_RUN_AS_NODE= electron . cli login --help
+
+# 发布（当前 CLI 实现含抖音等多平台，以 --platform 为准）
+ELECTRON_RUN_AS_NODE= electron . cli publish --help
+```
+
+打包后的可执行文件将 `electron .` 换成本地 `矩媒` / `MatrixMedia` 路径即可。若环境变量 `ELECTRON_RUN_AS_NODE` 被误开启，请先按提示关闭后再启动。
 
 ## 使用声明
 
