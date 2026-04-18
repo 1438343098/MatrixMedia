@@ -34,6 +34,7 @@
       }
     ],
     "productName": "矩媒",
+    "executableName": "matrixmedia",
     "appId": "com.matrix.video",
     "directories": {
       "output": "build"
@@ -49,6 +50,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "include": "scripts/nsis-path.nsh",
       "installerIcon": "lib/icons/icon.ico",
       "uninstallerIcon": "lib/icons/icon.ico",
       "installerHeaderIcon": "lib/icons/icon.ico"

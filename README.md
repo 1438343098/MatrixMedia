@@ -39,7 +39,14 @@ ELECTRON_RUN_AS_NODE= electron . cli login --help
 ELECTRON_RUN_AS_NODE= electron . cli publish --help
 ```
 
-打包后的可执行文件将 `electron .` 换成本地 `矩媒` / `MatrixMedia` 路径即可。若环境变量 `ELECTRON_RUN_AS_NODE` 被误开启，请先按提示关闭后再启动。
+Windows NSIS 安装包从 `0.4.5` 起会在安装时自动把应用安装目录加入当前用户 `PATH`，并固定 CLI 命令名为 `matrixmedia`。安装完成并重新打开终端后，可直接执行：
+
+```bash
+matrixmedia cli login --help
+matrixmedia cli publish --help
+```
+
+无需再区分中英文可执行文件名，统一使用 `matrixmedia` 即可。若环境变量 `ELECTRON_RUN_AS_NODE` 被误开启，请先按提示关闭后再启动。
 
 ## 使用声明
 
