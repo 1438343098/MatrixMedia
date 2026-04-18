@@ -41,19 +41,36 @@ export default async function (page, data, window,event) {
       },
       { timeout: 10000 }
     );
-    const publishHandle = await page.evaluateHandle(() => {
+    // 快手发布按钮点击：原先用 page.evaluateHandle 返回行级 div 再 puppeteer click，
+    // 在 hidden window 下几何中心常落不到真正的 <button> 上，结果是"看起来点过了但没发"。
+    // 改为在 evaluate 内部遍历真实 button / 行 div，直接调 DOM .click()，避开鼠标几何问题。
+    const clicked = await page.evaluate(() => {
+      const norm = t => String(t || "").replace(/\s+/g, "").trim();
       const bar = document.querySelector("#setting-tours + div");
-      if (!bar) return null;
-      for (const row of bar.querySelectorAll(":scope > div")) {
-        const t = row.textContent.replace(/\s+/g, "").trim();
-        if (t === "发布") return row;
+      if (!bar) return { ok: false, reason: "no-bar" };
+      for (const btn of bar.querySelectorAll("button")) {
+        if (norm(btn.textContent) === "发布" && !btn.disabled) {
+          btn.click();
+          return { ok: true, via: "button" };
+        }
       }
-      return null;
+      for (const row of bar.querySelectorAll(":scope > div")) {
+        if (norm(row.textContent) === "发布") {
+          const inner = row.querySelector("button,[role='button']");
+          if (inner) {
+            inner.click();
+            return { ok: true, via: "row>inner" };
+          }
+          row.click();
+          return { ok: true, via: "row" };
+        }
+      }
+      return { ok: false, reason: "no-match" };
     });
-    const publishEl = publishHandle.asElement();
-    if (!publishEl) throw new Error("未找到发布按钮");
-    await publishEl.click({ delay: 200 });
-    console.log("✅ 快手视频上传成功");
+    if (!clicked || !clicked.ok) {
+      throw new Error(`未找到发布按钮(${clicked && clicked.reason})`);
+    }
+    console.log(`✅ 快手视频已触发发布，click via=${clicked.via}`);
     setTimeout(() => {
       event.reply("puppeteerFile-done", {
         ...data,

@@ -11,6 +11,7 @@ import { runHistoryCli } from "./runHistoryCli";
 import ptConfig from "../config/ptConfig";
 import { runPuppeteerTask } from "../services/puppeteerFile";
 import { runDouyinCliLogin } from "../services/cliLogin/douyinCliLogin";
+import { changeData } from "../server/utils";
 
 export {
   isCliMode,
@@ -29,6 +30,20 @@ function fileStem(filePath) {
   const base = path.basename(filePath || "");
   const i = base.lastIndexOf(".");
   return i > 0 ? base.slice(0, i) : base;
+}
+
+function todayYmd() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function derivePhoneForRecord(v) {
+  if (v.phone) return String(v.phone);
+  if (!v.partition) return "";
+  const stripped = String(v.partition).replace(/^persist:/, "");
+  const idx = stripped.indexOf(v.platform);
+  return idx > 0 ? stripped.slice(0, idx) : stripped;
 }
 
 /**
@@ -121,6 +136,73 @@ export async function runCliMain(argv = process.argv) {
     const taskId = taskPayload.taskId;
     const CLI_PUBLISH_TIMEOUT_MS = 35 * 60 * 1000;
 
+    // 与 GUI LocalVideoPublish.buildVideoPayload / handleBatchPublish 的 pushData 写入保持一致，
+    // 使 cli publish 的记录同时出现在 GUI 视频管理与 `cli history`。
+    const recordDate = todayYmd();
+    const selectedFile = path.basename(resolvedFile);
+    const recordItem = {
+      bookName,
+      textOtherName: stem,
+      textType: "local",
+      pt: v.platform,
+      selectedFile,
+      bt: bt1,
+      bt2,
+      bq: String(v.bq || "").trim(),
+      address: String(v.address || "").trim(),
+      filePath: resolvedFile,
+      useragent: cfg.useragent,
+      phone: derivePhoneForRecord(v),
+      partition: v.partition,
+      url: cfg.listIndex,
+      date: recordDate,
+      publishAttemptCount: 1,
+      republishCount: 0,
+      publishSuccessCount: 0,
+      publishFailCount: 0,
+      publishStatus: "publishing",
+      lastPublishMessage: "等待发布结果",
+      lastPublishAt: Date.now(),
+    };
+
+    let recordId = null;
+    try {
+      const addRes = changeData({ fileName: "pushData", type: "add", item: recordItem });
+      if (addRes && addRes.success && Array.isArray(addRes.data)) {
+        const found = [...addRes.data].reverse().find(
+          it =>
+            it.textOtherName === recordItem.textOtherName &&
+            it.pt === recordItem.pt &&
+            it.selectedFile === recordItem.selectedFile &&
+            it.textType === recordItem.textType
+        );
+        if (found) recordId = found.id;
+      }
+    } catch (e) {
+      console.error("MatrixMedia: 写入 pushData 初始记录失败:", e && e.message);
+    }
+
+    const updateRecord = (status, message) => {
+      if (!recordId) return;
+      try {
+        changeData({
+          fileName: "pushData",
+          type: "update",
+          item: {
+            id: recordId,
+            date: recordDate,
+            publishStatus: status,
+            publishSuccessCount: status === "success" ? 1 : 0,
+            publishFailCount: status === "failed" ? 1 : 0,
+            lastPublishMessage: message || "",
+            lastPublishAt: Date.now(),
+          },
+        });
+      } catch (e) {
+        console.error("MatrixMedia: 更新 pushData 记录失败:", e && e.message);
+      }
+    };
+
     return await new Promise(resolve => {
       let settled = false;
       const finish = code => {
@@ -132,6 +214,7 @@ export async function runCliMain(argv = process.argv) {
 
       const timer = setTimeout(() => {
         console.error("CLI publish 超时（35 分钟），请检查网络或登录态");
+        updateRecord("failed", "CLI publish 超时 35 分钟");
         finish(1);
       }, CLI_PUBLISH_TIMEOUT_MS);
 
@@ -143,6 +226,7 @@ export async function runCliMain(argv = process.argv) {
             }
             const ok = payload && payload.status === true;
             console.log(JSON.stringify({ channel, status: ok, message: payload && payload.message }));
+            updateRecord(ok ? "success" : "failed", (payload && payload.message) || (ok ? "上传成功" : "上传失败"));
             finish(ok ? 0 : 3);
           } else if (channel === "puppeteer-noLogin") {
             if (payload && payload.taskId != null && payload.taskId !== taskId) {
@@ -152,6 +236,7 @@ export async function runCliMain(argv = process.argv) {
             if (payload && payload.pt === "抖音") {
               console.error("提示: 可先执行 cli login -p dy --phone <手机号> 在本机完成扫码登录。");
             }
+            updateRecord("failed", "登录态异常或未登录");
             finish(3);
           } else {
             console.log(channel, payload);
